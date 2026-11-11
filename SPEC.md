@@ -36,9 +36,11 @@ This version does not try to be a product yet.
 
 ## Out of scope for the PoC
 
-Buildings (later: separate parts from vector footprints with their own vertical scale), support
-pillars, microtabs (use LightBurn's tab tool if small pieces fall through), nesting, caching,
-packets, HTML guide, SVG, Docker.
+3D buildings (most buildings here are 1–2 storeys and ~2×2.5 mm at 1:5000, too small to assemble;
+they are engraved instead), support pillars, nesting, caching, packets, HTML guide, SVG, Docker.
+
+Added after the first physical tests: building outlines and road centrelines engraved on visible
+faces (roads also turned out to help alignment), and tabs on small pieces (they fell through the bed).
 
 ## What the PoC build must measure
 
