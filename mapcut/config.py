@@ -38,6 +38,11 @@ class Config:
     blank_width_mm: float = 800.0
     blank_height_mm: float = 600.0
     blank_margin_mm: float = 10.0
+    # Tabs: uncut gaps in the cut path that hold small pieces in the sheet. The real bridge is
+    # narrower than tab_width_mm by roughly one kerf.
+    tab_width_mm: float = 0.5
+    tab_angles_deg: tuple[float, ...] = (0.0, 120.0, 240.0)
+    tab_max_area_mm2: float = 200.0  # only pieces this small get tabs; each tab leaves a visible nub
     # [features] NLS topographic database; None disables that feature
     buildings: Path | None = None
     roads: Path | None = None
@@ -84,6 +89,7 @@ def load(path: str | Path) -> Config:
     for key in ("output_dir", "dem", "buildings", "roads"):
         if key in flat:
             flat[key] = (path.parent / flat[key]).resolve()
-    if "road_classes" in flat:
-        flat["road_classes"] = tuple(flat["road_classes"])
+    for key in ("road_classes", "tab_angles_deg"):
+        if key in flat:
+            flat[key] = tuple(flat[key])
     return Config(**flat)

@@ -9,12 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import ezdxf
+import shapely
 from ezdxf import units
-from shapely.geometry import LineString, box
+from shapely.geometry import LineString, Point, box
 
 from . import font
 from .config import Config
-from .geom import rings
+from .geom import lines, rings
 from .levels import Levels
 from .panels import Panel
 from .parts import Piece
@@ -64,22 +65,29 @@ def write_blank(path: Path, j: int, lv: Levels, pieces: list[Piece], cfg: Config
     for s in font.render(f"B{j}", m, m * 0.3, min(4.0, m * 0.4)):
         _poly(msp, s, "ENGRAVE_ID")
 
+    tabs = [t for pc in pieces if pc.blank == j and pc.ok for t in pc.tabs]
+    for ln in cut_lines(lv, j, tabs, cfg):
+        _poly(msp, ln.coords, "CUT", m, m, closed=ln.is_closed)
+    doc.saveas(path)
+
+
+def cut_lines(lv: Levels, j: int, tabs: list[Point], cfg: Config) -> list[LineString]:
+    """Cut paths for blank j in map mm, innermost first, with an uncut gap at every tab."""
     # Each contour i ≡ j is cut exactly once: it is both the outer edge of Q_i and the inner edge of Q_{i-k}.
     # Innermost (highest) first, so outer pieces are still held by the sheet while inner ones are cut.
     edge = lv.square.exterior.buffer(1e-3)
+    out: list[LineString] = []
     for i in range(len(lv) - 1, 0, -1):
-        if i % cfg.k != j:
-            continue
-        for ring in rings(lv.polys[i]):
-            rest = LineString(ring.coords).difference(edge)
-            if rest.equals(LineString(ring.coords)):
-                _poly(msp, ring.coords, "CUT", m, m, closed=True)
-            else:
-                for part in getattr(rest, "geoms", [rest]):
-                    if not part.is_empty:
-                        _poly(msp, part.coords, "CUT", m, m)
-    _poly(msp, lv.square.exterior.coords, "CUT", m, m, closed=True)
-    doc.saveas(path)
+        if i % cfg.k == j:
+            for ring in rings(lv.polys[i]):
+                out += lines(shapely.line_merge(LineString(ring.coords).difference(edge)))
+    out.append(LineString(lv.square.exterior.coords))
+    if not tabs:
+        return out
+    # A tab may also fall on a neighbouring same-blank contour closer than half a tab width; that only
+    # adds an extra holding point, so it is not worth special-casing.
+    gaps = shapely.union_all([t.buffer(cfg.tab_width_mm / 2) for t in tabs])
+    return [part for ln in out for part in lines(shapely.line_merge(ln.difference(gaps)))]
 
 
 def write_panels(path: Path, panels: list[Panel]) -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shapely
-from shapely.geometry import LineString, MultiPolygon, Polygon
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from shapely.geometry.base import BaseGeometry
 
 AREA_EPS = 1e-6  # mm²; anything smaller is numerical debris from boolean ops
@@ -28,6 +28,19 @@ def lines(g: BaseGeometry) -> list[LineString]:
         return [g]
     if hasattr(g, "geoms"):
         return [ln for part in g.geoms for ln in lines(part)]
+    return []
+
+
+def points(g: BaseGeometry) -> list[Point]:
+    """Point parts of any geometry; a collinear overlap contributes its endpoints."""
+    if g.is_empty:
+        return []
+    if isinstance(g, Point):
+        return [g]
+    if isinstance(g, LineString):
+        return [Point(g.coords[0]), Point(g.coords[-1])]
+    if hasattr(g, "geoms"):
+        return [p for part in g.geoms for p in points(part)]
     return []
 
 

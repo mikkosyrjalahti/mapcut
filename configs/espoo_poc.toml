@@ -29,6 +29,9 @@ id_min_height_mm = 1.2
 blank_width_mm = 800
 blank_height_mm = 600
 blank_margin_mm = 10
+tab_width_mm = 0.5                  # uncut gap in the path; real bridge is ~one kerf narrower
+tab_angles_deg = [0, 120, 240]      # 0 = east, counter-clockwise
+tab_max_area_mm2 = 200000000              # only small pieces get tabs; set huge to tab everything
 
 [features]
 # MANUAL: cached by `mapcut fetch`; remove a line to disable that feature.

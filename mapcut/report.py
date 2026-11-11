@@ -20,12 +20,12 @@ ATTRIBUTION = (
 def write_manifest(path: Path, pieces: list[Piece]) -> None:
     with path.open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["piece_id", "layer", "z_m", "blank", "status", "area_mm2", "cx_mm", "cy_mm", "id_height_mm", "notes"])
+        w.writerow(["piece_id", "layer", "z_m", "blank", "status", "area_mm2", "cx_mm", "cy_mm", "id_height_mm", "tabs", "notes"])
         for pc in pieces:
             c = pc.geom.centroid
             w.writerow([
                 pc.id, pc.layer, f"{pc.z_m:.2f}", pc.blank, pc.status, f"{pc.geom.area:.1f}",
-                f"{c.x:.1f}", f"{c.y:.1f}", f"{pc.label.height:.2f}" if pc.label else "", ";".join(pc.notes),
+                f"{c.x:.1f}", f"{c.y:.1f}", f"{pc.label.height:.2f}" if pc.label else "", len(pc.tabs), ";".join(pc.notes),
             ])
 
 
@@ -43,9 +43,10 @@ def summary(lv: Levels, pieces: list[Piece], panels: list[Panel], cfg: Config) -
         f"pieces dropped    {status['dropped_small']} small, {status['dropped_thin']} thin "
         f"({sum(p.geom.area for p in pieces if not p.ok):.0f} mm² total)",
         "piece notes       " + (", ".join(f"{k}: {v}" for k, v in sorted(notes.items())) or "none"),
+        f"tabbed pieces     {sum(bool(p.tabs) for p in ok)} ({sum(len(p.tabs) for p in ok)} tabs, {cfg.tab_width_mm} mm, pieces <= {cfg.tab_max_area_mm2:.0f} mm²)",
         f"engraved features {sum(len(p.buildings) for p in ok)} building outlines, "
         f"{sum(ln.length for p in ok for ln in p.roads):.0f} mm of road centreline",
-        "panels            " +", ".join(f"{p.name} {p.outline.bounds[2]:.1f}x{p.outline.bounds[3]:.1f} mm" for p in panels),
+        "panels            " + ", ".join(f"{p.name} {p.outline.bounds[2]:.1f}x{p.outline.bounds[3]:.1f} mm" for p in panels),
         "",
         ATTRIBUTION,
     ]

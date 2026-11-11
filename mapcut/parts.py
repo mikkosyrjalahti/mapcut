@@ -12,7 +12,7 @@ from shapely.ops import polylabel
 
 from . import font
 from .config import Config
-from .geom import lines, polygons
+from .geom import lines, points, polygons
 from .levels import Levels
 
 LABEL_CLEARANCE_MM = 0.4  # keep text this far from cuts and from the guide line
@@ -54,6 +54,7 @@ class Piece:
     notes: list[str] = field(default_factory=list)
     buildings: list[Polygon] = field(default_factory=list)  # outlines on the visible face
     roads: list[LineString] = field(default_factory=list)  # centrelines on the visible face
+    tabs: list[Point] = field(default_factory=list)  # points on the outline left uncut
 
     @property
     def ok(self) -> bool:
@@ -87,8 +88,28 @@ def build_pieces(lv: Levels, cfg: Config) -> list[Piece]:
             pc = Piece(layer=i, blank=i % k, z_m=lv.z[i], geom=g, id=pid, status=status)
             if pc.ok:
                 _decorate(pc, guide_src, hidden, heights, cfg)
+                if g.area <= cfg.tab_max_area_mm2:
+                    pc.tabs = tab_points(g, cfg.tab_angles_deg)
             pieces.append(pc)
     return pieces
+
+
+def tab_points(g: Polygon, angles_deg) -> list[Point]:
+    """MANUAL: small pieces are held by tabs where rays at the given angles (0 = east, CCW) from the
+    piece's interior centre first meet its outline. Each tab joins the piece to its neighbour on the
+    same blank (or the blank margin); break it and sand the nub on the visible edge."""
+    # Pole of inaccessibility, not centroid: the centroid of a concave piece can lie outside it.
+    c = polylabel(g, tolerance=0.05)
+    minx, miny, maxx, maxy = g.bounds
+    reach = math.hypot(maxx - minx, maxy - miny) + 1.0
+    out = []
+    for a in angles_deg:
+        r = math.radians(a)
+        ray = LineString([(c.x, c.y), (c.x + reach * math.cos(r), c.y + reach * math.sin(r))])
+        hits = points(ray.intersection(g.exterior))
+        if hits:
+            out.append(min(hits, key=c.distance))
+    return out
 
 
 def _status(g: Polygon, cfg: Config) -> str:

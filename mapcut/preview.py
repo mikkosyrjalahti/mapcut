@@ -60,6 +60,8 @@ def render(out: Path, lv: Levels, pieces: list[Piece], panels: list[Panel], cfg:
                 ax.add_patch(_patch(b, facecolor="none", edgecolor="magenta", lw=0.3))
             for ln in pc.roads:
                 ax.plot(*ln.xy, color="c", lw=0.5)
+            for tab in pc.tabs:
+                ax.plot(tab.x, tab.y, "k.", ms=2)
         ax.set_title(f"blank B{j}: layers {', '.join(str(i) for i in range(j, len(lv), cfg.k))}")
     for ax in axes:
         ax.set_xlim(0, side)

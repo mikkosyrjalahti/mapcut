@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import shapely
 from shapely.geometry import Point
 
 from mapcut import font
@@ -145,3 +146,32 @@ def test_features_only_on_visible_faces(built):
             assert above is None or ln.intersection(above).length < 1e-6
             n_r += 1
     assert n_b > 50 and n_r > 5
+
+
+def test_tabs_on_outline_and_left_uncut(built):
+    from mapcut.export import cut_lines
+
+    cfg, lv, pieces = built
+    small = [p for p in pieces if p.ok and p.geom.area <= cfg.tab_max_area_mm2]
+    assert small, "fixture should contain small pieces"
+    for pc in pieces:
+        if pc in small:
+            assert 1 <= len(pc.tabs) <= len(cfg.tab_angles_deg)
+            assert all(pc.geom.exterior.distance(t) < 1e-6 for t in pc.tabs)
+        else:
+            assert pc.tabs == []
+    for j in range(cfg.k):
+        tabs = [t for p in pieces if p.blank == j for t in p.tabs]
+        cuts = shapely.union_all(cut_lines(lv, j, tabs, cfg))
+        for t in tabs:
+            # The uncut gap is the full tab width: nothing within half of it is cut.
+            assert cuts.distance(t) >= cfg.tab_width_mm / 2 - 1e-3  # gap is a polygonised circle
+
+
+def test_tab_points_follow_angles():
+    from shapely.geometry import box
+
+    from mapcut.parts import tab_points
+
+    pts = tab_points(box(0, 0, 10, 10), (0, 90, 180, 270))
+    assert [(round(p.x, 3), round(p.y, 3)) for p in pts] == [(10, 5), (5, 10), (0, 5), (5, 0)]
