@@ -1,0 +1,26 @@
+[project]
+name = "mapcut"
+version = "0.1.0"
+description = "Laser-cut stacked topographic maps from Finnish NLS elevation data"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "scipy",
+    "rasterio",
+    "pyproj",
+    "contourpy",
+    "shapely>=2.0",
+    "ezdxf",
+    "matplotlib",
+    "pyogrio>=0.13.0",
+]
+
+[project.scripts]
+mapcut = "mapcut.cli:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

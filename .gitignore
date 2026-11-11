@@ -1,0 +1,6 @@
+output/
+.venv/
+__pycache__/
+*.pyc
+data/*.tif
+data/*.gpkg
