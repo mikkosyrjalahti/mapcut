@@ -162,10 +162,24 @@ def test_tabs_on_outline_and_left_uncut(built):
             assert pc.tabs == []
     for j in range(cfg.k):
         tabs = [t for p in pieces if p.blank == j for t in p.tabs]
-        cuts = shapely.union_all(cut_lines(lv, j, tabs, cfg))
+        inner, perimeter = cut_lines(lv, j, tabs, cfg)
+        cuts = shapely.union_all([*inner, *perimeter])
         for t in tabs:
             # The uncut gap is the full tab width: nothing within half of it is cut.
             assert cuts.distance(t) >= cfg.tab_width_mm / 2 - 1e-3  # gap is a polygonised circle
+
+
+def test_perimeter_cut_separate_from_inner(built):
+    from mapcut.export import cut_lines
+
+    cfg, lv, _ = built
+    edge = lv.square.exterior
+    for j in range(cfg.k):
+        inner, perimeter = cut_lines(lv, j, [], cfg)
+        # The whole map edge is on the perimeter layer and nothing else is.
+        assert shapely.union_all(perimeter).equals(edge)
+        # No inner path runs along the edge; at most its end points touch it.
+        assert all(ln.intersection(edge.buffer(1e-3)).length < 1e-2 for ln in inner)
 
 
 def test_tab_points_follow_angles():

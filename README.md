@@ -111,11 +111,16 @@ DXF units are millimetres. Operations are identified by **colour**:
 | Green | `ENGRAVE_ID` | Line |
 | Magenta | `ENGRAVE_BUILDING` | Line or Fill (closed outlines). Optional |
 | Cyan | `ENGRAVE_ROAD` | Line. Optional, but useful for alignment |
-| Red | `CUT` | Cut, **last** |
+| Red | `CUT` | Cut, after all engraves |
+| Yellow | `CUT_PERIMETER` | Cut, **very last** (map square edge) |
 
-- Order the layers so every engrave runs before the cut. Pieces cut free may shift slightly.
-- The cut paths are written innermost (highest) contour first. Check in the preview that LightBurn's
-  optimisation keeps that order.
+- Order the layers: engraves, then red, then yellow. Pieces cut free may shift slightly.
+- The perimeter has its own layer because it frees the whole map from the blank's rim. Cut before
+  the inner contours, the map can warp and go out of focus. LightBurn cannot keep it last within
+  one layer: contours that reach the map edge are open paths, so "cut inner shapes first" does not
+  treat them as inside the square.
+- The inner cut paths are written innermost (highest) contour first. Check in the preview that
+  LightBurn's optimisation keeps that order.
 - If you fill buildings, use LightBurn's option to fill shapes individually. Otherwise it may scan
   the full width between scattered buildings.
 

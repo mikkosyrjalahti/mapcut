@@ -20,11 +20,22 @@ from .levels import Levels
 from .panels import Panel
 from .parts import Piece
 
-# MANUAL: LightBurn layer mapping — red = cut, blue = guide engrave (line, low power),
-# green = ID engrave (line), magenta = building outlines (closed: Line or Fill), cyan = road
-# centrelines (Line). Disable any engrave layer in LightBurn to skip it. Put all engrave layers
-# BEFORE the cut layer in LightBurn's order.
-LAYERS = {"ENGRAVE_GUIDE": 5, "ENGRAVE_ID": 3, "ENGRAVE_BUILDING": 6, "ENGRAVE_ROAD": 4, "CUT": 1}
+# MANUAL: LightBurn layer mapping — red = cut, yellow = map perimeter cut, blue = guide engrave
+# (line, low power), green = ID engrave (line), magenta = building outlines (closed: Line or Fill),
+# cyan = road centrelines (Line). Disable any engrave layer in LightBurn to skip it. Order: engraves,
+# then red, then yellow LAST.
+# The perimeter is its own layer because the optimiser cannot order it reliably within one layer:
+# edge-touching contours are open paths, so "cut inner shapes first" does not see them as inside the
+# square. Cut early, the perimeter frees the whole map from the rim and parts warp out of focus.
+# Yellow, not a near-red colour, so LightBurn cannot merge it into the red layer on import.
+LAYERS = {
+    "ENGRAVE_GUIDE": 5,
+    "ENGRAVE_ID": 3,
+    "ENGRAVE_BUILDING": 6,
+    "ENGRAVE_ROAD": 4,
+    "CUT": 1,
+    "CUT_PERIMETER": 2,
+}
 PANEL_GAP_MM = 5.0
 
 
@@ -66,13 +77,18 @@ def write_blank(path: Path, j: int, lv: Levels, pieces: list[Piece], cfg: Config
         _poly(msp, s, "ENGRAVE_ID")
 
     tabs = [t for pc in pieces if pc.blank == j and pc.ok for t in pc.tabs]
-    for ln in cut_lines(lv, j, tabs, cfg):
-        _poly(msp, ln.coords, "CUT", m, m, closed=ln.is_closed)
+    inner, perimeter = cut_lines(lv, j, tabs, cfg)
+    for layer, lns in (("CUT", inner), ("CUT_PERIMETER", perimeter)):
+        for ln in lns:
+            _poly(msp, ln.coords, layer, m, m, closed=ln.is_closed)
     doc.saveas(path)
 
 
-def cut_lines(lv: Levels, j: int, tabs: list[Point], cfg: Config) -> list[LineString]:
-    """Cut paths for blank j in map mm, innermost first, with an uncut gap at every tab."""
+def cut_lines(lv: Levels, j: int, tabs: list[Point], cfg: Config) -> tuple[list[LineString], list[LineString]]:
+    """(inner, perimeter) cut paths for blank j in map mm, with an uncut gap at every tab.
+
+    Inner contours are innermost first; the map-square perimeter is returned separately so it can be
+    cut after all of them (see LAYERS)."""
     # Each contour i ≡ j is cut exactly once: it is both the outer edge of Q_i and the inner edge of Q_{i-k}.
     # Innermost (highest) first, so outer pieces are still held by the sheet while inner ones are cut.
     edge = lv.square.exterior.buffer(1e-3)
@@ -81,13 +97,18 @@ def cut_lines(lv: Levels, j: int, tabs: list[Point], cfg: Config) -> list[LineSt
         if i % cfg.k == j:
             for ring in rings(lv.polys[i]):
                 out += lines(shapely.line_merge(LineString(ring.coords).difference(edge)))
-    out.append(LineString(lv.square.exterior.coords))
+    perimeter = [LineString(lv.square.exterior.coords)]
     if not tabs:
-        return out
+        return out, perimeter
     # A tab may also fall on a neighbouring same-blank contour closer than half a tab width; that only
-    # adds an extra holding point, so it is not worth special-casing.
+    # adds an extra holding point, so it is not worth special-casing. Tabs on the map edge stay: they
+    # hold the finished map in the sheet.
     gaps = shapely.union_all([t.buffer(cfg.tab_width_mm / 2) for t in tabs])
-    return [part for ln in out for part in lines(shapely.line_merge(ln.difference(gaps)))]
+
+    def gapped(lns: list[LineString]) -> list[LineString]:
+        return [part for ln in lns for part in lines(shapely.line_merge(ln.difference(gaps)))]
+
+    return gapped(out), gapped(perimeter)
 
 
 def write_panels(path: Path, panels: list[Panel]) -> None:
@@ -108,7 +129,8 @@ def write_calibration(path: Path, cfg: Config) -> None:
     survive (set min_width_mm), ID legibility per text height, guide visibility per inset, and whether
     the nested squares stay in place on the bed (in-place cutting)."""
     doc, msp = _new()
-    _poly(msp, box(0, 0, 100, 100).exterior.coords, "CUT", closed=True)
+    # Perimeter layer like a real blank, so the coupon also tests the layer order.
+    _poly(msp, box(0, 0, 100, 100).exterior.coords, "CUT_PERIMETER", closed=True)
     # Width strips 20 mm long, labelled in tenths of a mm.
     x = 5.0
     for w in (0.6, 0.8, 1.0, 1.2, 1.5, 2.0):
