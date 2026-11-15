@@ -1,6 +1,5 @@
 # mapcut — PoC spec
 
-Supersedes `helsinki_laser_cut_topographic_map_agentic_spec.md` for the proof of concept.
 Goal of the PoC: one physical end-to-end build to find out what the physical process gets wrong.
 This version does not try to be a product yet.
 
