@@ -17,7 +17,7 @@ simplify_mm = 0.05
 
 [model]
 scale = 5000
-thickness_mm = 1.5   # measure the actual sheet; it sets stack height and panel profile
+thickness_mm = 3.1   # measure the actual sheet; it sets stack height and panel profile
 k = 3
 
 [fabrication]
