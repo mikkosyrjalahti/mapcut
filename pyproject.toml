@@ -3,6 +3,8 @@ name = "mapcut"
 version = "0.1.0"
 description = "Laser-cut stacked topographic maps from Finnish NLS elevation data"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "numpy",
     "scipy",

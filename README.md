@@ -150,6 +150,9 @@ DXF units are millimetres. Operations are identified by **colour**:
 
 ## Data and licence
 
+The code is MIT-licensed (see `LICENSE`). The data it downloads and the models it produces are
+covered by the data licence below, not by MIT.
+
 All data are from the National Land Survey of Finland (NLS/MML), **CC BY 4.0**, fetched without an
 API key from the CSC Paituli mirror:
 
